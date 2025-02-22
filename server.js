@@ -26,12 +26,12 @@ app.post("/api/contact", async (req, res) => {
     try {
         // Nodemailer transporter with Gmail credentials
         const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: "23k91a6702@tkrcet.com", // Your Gmail
-                pass: "tkrcet2023", // Your Gmail Password
-            },
-        });
+    service: "gmail",
+    auth: {
+        user: "23k91a6702@tkrcet.com",
+        pass: "ndpo kmsd vtjd oomq", // Use App Password instead of normal password
+    },
+});
 
         // Email options (sent to your email)
         const mailOptions = {
