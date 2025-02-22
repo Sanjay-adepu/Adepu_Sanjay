@@ -28,8 +28,8 @@ app.post("/api/contact", async (req, res) => {
         const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-        user:"adepusanjay444@gmail.com",
-        pass: "ndpo kmsd vtjd oomq", // Use App Password instead of normal password
+        user: "23k91a6702@tkrcet.com",
+        pass: "lrnesuqvssiognej", // Use the generated App Password here
     },
 });
 
