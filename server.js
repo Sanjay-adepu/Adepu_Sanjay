@@ -9,7 +9,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: "https://adepu-sanjay.vercel.app"
+  origin: ["https://adepu-sanjay.vercel.app", "http://localhost:5173"]
 }));
 
 // Routes
