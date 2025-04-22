@@ -11,8 +11,7 @@ app.use(cors({
   origin: ["https://adepu-sanjay.vercel.app", "http://localhost:5173"]
 }));
 
-// Routes
-app.use("/data", ProjectRoutes);
+
 
 // Contact form API endpoint
 app.post("/api/contact", async (req, res) => {
