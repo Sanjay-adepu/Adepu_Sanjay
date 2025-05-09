@@ -21,95 +21,77 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemi
 // Generate Prompt for Gemini
 function generatePrompt(topic, slidesCount) {
   return `
-You are an expert presentation designer and educator. Generate a compelling, visually-structured presentation on the topic: "${topic}", consisting of ${slidesCount} slides. This presentation must be suitable for professional, academic, or general audiences, depending on the topic.
+You are an expert presentation designer and educator. Create a compelling, visually-structured presentation on the topic: "${topic}", consisting of ${slidesCount} slides. The presentation should be suitable for professional, academic, or general audiences depending on the topic.
 
-## Slide Structure Rules:
+## Slide Format Rules:
 
-- Alternate every 2 slides:  
-  - One slide must use either **multi-column text boxes** (for structured content)  
-    OR  
-  - A **diagram with shapes and lines** (e.g., flowchart, decision tree, hierarchy).
-
-- **Do not** include charts or graphs of any kind.
-
-- If a slide contains shapes and lines, do not use bullet points or tables — only describe the visual layout and the shape structure clearly.
-
-- Slides with multi-column text boxes should not use shapes or flow elements — only well-structured text in columns.
+- Do **NOT** use charts of any kind.
+- Use a combination of:
+  1. **Multi-column text box layouts** (for steps, feature breakdowns, comparisons, etc.).
+  2. **Structured shapes and lines** (e.g., flowcharts, pyramids, decision trees, timelines).
+- Do **NOT** combine both in the same slide — keep shape-based diagrams and multi-column text on separate slides.
+- **Every 3 slides**, include **1 table** (use Markdown).
+- Slides must meaningfully alternate between:
+  - Bullet points
+  - Tables (every 3 slides)
+  - Multi-column layouts
+  - Shape-based diagrams
 
 ## Slide Content Guidelines:
 
-- Title: Begin with "Slide X: [Title]" — short, relevant, and clear.
+- Title: Start with "Slide X: [Title]" — concise and clear.
+- Bullet Points: Use only if slide has no table, shape, or multi-column structure.
+- Multi-column Layouts: Show as side-by-side columns (e.g., Features vs Benefits).
+- Tables (Markdown): Use for comparisons, breakdowns, categories.
+- Shapes: Suggest appropriate shape/diagram (e.g., triangle for hierarchy, decision tree for logic, circle for cycles).
 
-- Bullet Points: Only on text-based slides without shapes. Use 4–5 clear, informative bullet points.
+## Visuals:
 
-- Multi-Column Text Boxes (Markdown):  
-  Use for comparisons, steps, categories, or key concepts. Indicate how many columns and what goes in each.
+- Use diagrams only when appropriate and with clarity.
+- Example shapes: flowchart, timeline, Venn diagram, cycle, matrix, pyramid, etc.
+- Suggest where to place lines/arrows if applicable.
 
-- Shapes and Lines (Markdown):  
-  Describe layout using clear instructions like:
-  \`\`\`shapes
-  Rectangle: Start
-  Arrow to
-  Diamond: Decision?
-  Arrow Yes to
-  Rectangle: Action A
-  Arrow No to
-  Rectangle: Action B
-  \`\`\`
+## Tone and Examples:
 
-- Add short examples, analogies, or metaphors to support understanding if relevant.
+- Include examples, analogies, or metaphors for better clarity.
+- Keep explanations precise and relevant.
+- Avoid filler; every slide must add meaningful content.
 
-- Avoid filler content; each slide should add value and be clearly visualized.
+## Output Format:
 
-- Keep tone appropriate to the topic’s domain.
+**Example Slide Output**
 
-## Example Slides:
+Slide 1: Understanding Cloud Computing  
+- Cloud computing delivers computing services over the internet.  
+- Offers flexibility, scalability, and cost-efficiency.  
+- Common types include IaaS, PaaS, and SaaS.  
+- Used in storage, networking, databases, and analytics.  
+Use a cloud shape to represent the concept.
 
-Slide 1: Introduction to Data Privacy
-
-- Data privacy is about protecting personal information.
-- Common threats include hacking and surveillance.
-- Laws like GDPR and HIPAA enforce privacy standards.
-- Individuals must understand their rights and risks.
-
-Use a lock icon to symbolize security.
-
-Slide 2: Components of Data Privacy Policy
-
-\`\`\`columns
-Column 1: Legal Aspects  
-- GDPR  
-- HIPAA  
-- Consent & Compliance
-
-Column 2: Technical Measures  
-- Encryption  
-- Access Control  
-- Anonymization
+Slide 2: Cloud Service Models Comparison  
+\`\`\`table
+| Model | Description | Example |
+|-------|-------------|---------|
+| IaaS  | Infrastructure as a Service | AWS EC2 |
+| PaaS  | Platform as a Service | Google App Engine |
+| SaaS  | Software as a Service | Gmail |
 \`\`\`
 
-Use a document shape for each column header.
+Slide 3: Benefits vs Challenges of Cloud  
+**Multi-Column Layout**
 
-Slide 3: Data Breach Response Process
+**Benefits:**  
+- Scalability  
+- Flexibility  
+- Cost-effective  
 
-\`\`\`shapes
-Ellipse: Detect Breach  
-Arrow to  
-Rectangle: Notify Stakeholders  
-Arrow to  
-Diamond: Severity Assessment  
-Arrow Yes to  
-Rectangle: Report to Authorities  
-Arrow No to  
-Rectangle: Internal Resolution  
-\`\`\`
+**Challenges:**  
+- Security risks  
+- Downtime  
+- Compliance  
 
-Use a flowchart layout with decision point.
-  `;
+`;
 }
-
-
-
 
 
 
@@ -123,74 +105,58 @@ function parseGeminiResponse(text) {
     const lines = section.trim().split("\n");
     const title = lines[0]?.trim() || `Slide ${i + 1}`;
     const bullets = [];
-    const tables = [];
+    const tableLines = [];
+    const columns = {};
     const shapes = [];
-    const columns = [];
-    let currentShapeBlock = "";
-    let currentColumnBlock = "";
-    let inShape = false;
-    let inColumns = false;
+    let currentColumn = null;
+    let inColumnBlock = false;
 
     lines.slice(1).forEach(line => {
-      // Start of shapes block
-      if (line.trim() === "```shapes") {
-        inShape = true;
-        currentShapeBlock = "";
+      const shapeMatch = line.match(/Use a (.+?) (shape|diagram)/i);
+      if (shapeMatch) {
+        shapes.push(shapeMatch[1].trim());
         return;
       }
 
-      // End of shapes block
-      if (line.trim() === "```" && inShape) {
-        shapes.push(currentShapeBlock.trim());
-        inShape = false;
+      // Markdown table
+      if (line.startsWith("|")) {
+        tableLines.push(line);
         return;
       }
 
-      // Inside shapes block
-      if (inShape) {
-        currentShapeBlock += line + "\n";
+      // Column layout: start of column block
+      const colHeaderMatch = line.match(/^(\*\*.+?\*\*):$/);
+      if (colHeaderMatch) {
+        currentColumn = colHeaderMatch[1].replace(/\*\*/g, "").trim();
+        columns[currentColumn] = [];
+        inColumnBlock = true;
         return;
       }
 
-      // Start of columns block
-      if (line.trim() === "```columns") {
-        inColumns = true;
-        currentColumnBlock = "";
+      // Column items
+      if (inColumnBlock && line.trim().startsWith("-")) {
+        columns[currentColumn].push(line.replace(/^-/, "").trim());
         return;
       }
 
-      // End of columns block
-      if (line.trim() === "```" && inColumns) {
-        columns.push(currentColumnBlock.trim());
-        inColumns = false;
-        return;
-      }
-
-      // Inside columns block
-      if (inColumns) {
-        currentColumnBlock += line + "\n";
-        return;
-      }
-
-      // Bullet point
+      // Bullet points
       if (line.trim().startsWith("-")) {
         bullets.push(line.replace(/^-/, "").trim());
+        return;
       }
-
-      // Additional formats like tables can go here if needed
     });
 
     slides.push({
       title,
-      bullets,
-      columns,
-      shapes
+      bullets: bullets.length > 0 ? bullets : [],
+      table: tableLines.length > 0 ? tableLines.join("\n") : null,
+      columns: Object.keys(columns).length > 0 ? columns : null,
+      shape: shapes.length > 0 ? shapes[0] : null
     });
   });
 
   return slides;
 }
-
 
 
 
