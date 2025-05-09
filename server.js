@@ -118,13 +118,11 @@ function parseGeminiResponse(text) {
         return;
       }
 
-      // Markdown table
       if (line.startsWith("|")) {
         tableLines.push(line);
         return;
       }
 
-      // Column layout: start of column block
       const colHeaderMatch = line.match(/^(\*\*.+?\*\*):$/);
       if (colHeaderMatch) {
         currentColumn = colHeaderMatch[1].replace(/\*\*/g, "").trim();
@@ -133,38 +131,37 @@ function parseGeminiResponse(text) {
         return;
       }
 
-      // Column items
       if (inColumnBlock && line.trim().startsWith("-")) {
         columns[currentColumn].push(line.replace(/^-/, "").trim());
         return;
       }
 
-      // Bullet points
       if (line.trim().startsWith("-")) {
         bullets.push(line.replace(/^-/, "").trim());
         return;
       }
     });
 
-    // Only push slide if at least one content type is present
-    if (
-      bullets.length > 0 ||
-      tableLines.length > 0 ||
-      Object.keys(columns).length > 0 ||
-      shapes.length > 0
-    ) {
-      slides.push({
-        title,
-        bullets: bullets.length > 0 ? bullets : [],
-        table: tableLines.length > 0 ? tableLines.join("\n") : null,
-        columns: Object.keys(columns).length > 0 ? columns : null,
-        shape: shapes.length > 0 ? shapes[0] : null
-      });
+    // Fallback: Ensure one non-null content exists
+    const hasContent = bullets.length || tableLines.length || Object.keys(columns).length || shapes.length;
+    if (!hasContent) {
+      bullets.push("Content coming soon...");
     }
+
+    slides.push({
+      title,
+      bullets: bullets.length > 0 ? bullets : null,
+      table: tableLines.length > 0 ? tableLines.join("\n") : null,
+      columns: Object.keys(columns).length > 0 ? columns : null,
+      shape: shapes.length > 0 ? shapes[0] : null
+    });
   });
 
   return slides;
 }
+
+
+
 
 
 
