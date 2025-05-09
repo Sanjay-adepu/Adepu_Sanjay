@@ -20,51 +20,57 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemi
 
 // Generate Prompt for Gemini
 function generatePrompt(topic, slidesCount) {
-  return `
-You are an expert presentation designer and educator. Generate a compelling, visually-structured presentation on the topic: **"${topic}"**, consisting of **${slidesCount} slides**. This presentation must be suitable for professional, academic, or general audiences, depending on the topic.
+  return `  
+You are an expert presentation designer and educator. Generate a compelling, visually-structured presentation on the topic: **"${topic}"**, consisting of **${slidesCount} slides**. This presentation must be suitable for professional, academic, or general audiences, depending on the topic.  
 
-### Format for Each Slide:
-- **Title**: Begin with "Slide X: [Title]" — clear, short, and topic-relevant.
-- **Bullet Points**: 4–5 concise, informative bullets that explain or expand on the topic. Use precise, well-organized language.
-- **Tables (Markdown)**: If data comparison, classification, or breakdown enhances understanding, include a properly formatted markdown table.
-- **Charts (Markdown)**: Where relevant, insert a simple bar or pie chart in a markdown code block to illustrate key stats or trends.
-- **Shapes or Icons (Conceptual)**: Suggest a shape (triangle, decision tree, star, circle, square) or visual element that best represents the main idea on that slide.
+### Format Rules:
+- **Every 2 slides**: One of them must include either a **table** or a **chart**.
+- If a slide contains a **table or chart**, it should **not include bullet points** — focus on the visual content only.
+- Alternate between visual (table/chart) and bullet-style slides for variety and clarity.
 
-### Important Instructions:
-- Use markdown where applicable. Avoid filler text.
-- Ensure **no slide is empty** — every slide must contribute meaningfully to understanding the topic.
-- Maintain logical flow across slides (intro, core, comparison, application, conclusion).
-- When appropriate, add brief examples, metaphors, or analogies.
-- Tailor tone and depth to match the topic’s domain (e.g., technical for AI, accessible for lifestyle, insightful for history).
-- Keep content **globally relevant and bias-free**.
+### Slide Content Guidelines:
+- **Title**: Begin with "Slide X: [Title]" — short, relevant, and clear.  
+- **Bullet Points**: 4–5 well-structured bullets (only if the slide has no chart or table).  
+- **Tables (Markdown)**: Use for comparisons, classifications, or breakdowns.  
+- **Charts (Markdown)**: Choose the most appropriate type from the list below and represent the data using markdown code blocks.
+
+### Allowed Chart Types (use one where relevant):
+- **Bar Chart**  
+- **Pie Chart**  
+- **Line Chart**  
+- **Doughnut Chart**  
+- **Stacked Bar Chart**  
+- **Area Chart**
+
+### Additional:
+- **Shapes/Icons**: Suggest a visual element (e.g., triangle, decision tree, star, circle, etc.) to symbolize the slide’s concept.
+- Add short examples, analogies, or metaphors if it helps understanding.
+- Keep tone and complexity appropriate to the topic’s domain.
+- Avoid empty or filler content; every slide must meaningfully add to the topic.
 
 ### Example Slide Output:
 
-**Slide 1: Understanding Artificial Intelligence**
-- AI simulates human-like intelligence in machines.
-- Includes learning, problem-solving, language understanding.
-- Used in areas like healthcare, finance, robotics.
-- Two main types: Narrow AI and General AI.
-- Use a **lightbulb shape** to symbolize innovation in AI.
+**Slide 1: Key Concepts of Artificial Intelligence**  
+- AI is the simulation of human intelligence in machines.  
+- Includes learning, reasoning, and self-correction.  
+- Found in industries like healthcare, finance, and education.  
+- Divided into Narrow AI and General AI.  
+- Use a **lightbulb shape** to represent innovation.  
 
-**Example Table**:
-| AI Type     | Description                  |
-|-------------|------------------------------|
-| Narrow AI   | Performs specific tasks only  |
-| General AI  | Capable of general reasoning  |
+**Slide 2: AI Industry Adoption Rates**  
 
-**Example Chart**:
-\`\`\`chart
-Type: bar
-Data:
-  - AI in Healthcare: 35%
-  - AI in Finance: 30%
-  - AI in Education: 20%
-  - Other: 15%
-\`\`\`
+\`\`\`chart  
+Type: pie  
+Data:  
+  - Healthcare: 40%  
+  - Finance: 25%  
+  - Education: 20%  
+  - Other: 15%  
+\`\`\`  
 
-Ensure slide content is engaging, structured, and ready to be transformed into visual slides by a frontend like Reveal.js or a platform like Gamma.
-`;
+- Use a **pie chart icon** to represent proportional adoption.  
+
+Make the output ready for rendering in Reveal.js, Gamma, or other slide platforms.`;
 }
 
 
