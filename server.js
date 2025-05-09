@@ -73,6 +73,7 @@ Make the output ready for rendering in Reveal.js, Gamma, or other slide platform
 
 
 // Parse Gemini response into structured slides
+// Parse Gemini response into structured slides
 function parseGeminiResponse(text) {
   const slides = [];
   const sections = text.split(/Slide \d+:/).filter(Boolean);
@@ -85,47 +86,44 @@ function parseGeminiResponse(text) {
     const charts = [];
     const shapes = [];
     let currentTable = [];
-    let currentChart = null;
+    let currentChart = "";
     let inChart = false;
 
     lines.slice(1).forEach(line => {
-      // Capture shapes/icons mentioned in the bullet points
       const shapeMatch = line.match(/Use a (\w+) shape/);
       if (shapeMatch) {
         shapes.push(shapeMatch[1]);
         return;
       }
 
-      // Handling markdown tables
+      // Handle markdown table
       if (line.startsWith("|")) {
         currentTable.push(line);
       } 
-      // Handling chart code blocks
+      // Start of chart block
       else if (line.startsWith("```chart")) {
         inChart = true;
         currentChart = "";
       } 
       // End of chart block
       else if (line.startsWith("```") && inChart) {
-        charts.push(currentChart.trim());
+        charts.push(parseChart(currentChart.trim()));
         inChart = false;
       } 
-      // Collect chart content inside the block
+      // Inside chart block
       else if (inChart) {
         currentChart += line + "\n";
       } 
-      // Collect bullet points
-      else if (line.startsWith("-")) {
+      // Bullet point
+      else if (line.trim().startsWith("-")) {
         bullets.push(line.replace(/^-/, "").trim());
       }
     });
 
-    // If a table exists, push it into the tables array
     if (currentTable.length > 0) {
       tables.push(currentTable.join("\n"));
     }
 
-    // Push structured slide information into the slides array
     slides.push({
       title,
       bullets,
@@ -138,6 +136,38 @@ function parseGeminiResponse(text) {
   return slides;
 }
 
+// Helper function to parse chart content into structured object
+function parseChart(chartText) {
+  const chart = {};
+  const lines = chartText.split("\n");
+  const data = [];
+
+  lines.forEach(line => {
+    if (line.startsWith("Type:")) {
+      chart.type = line.replace("Type:", "").trim();
+    } else if (line.startsWith("Title:")) {
+      chart.title = line.replace("Title:", "").trim();
+    } else if (line.startsWith("X-Axis:")) {
+      chart.xAxis = line.replace("X-Axis:", "").trim();
+    } else if (line.startsWith("Y-Axis:")) {
+      chart.yAxis = line.replace("Y-Axis:", "").trim();
+    } else if (line.startsWith("//")) {
+      chart.note = line.replace("//", "").trim();
+    } else if (line.includes(":")) {
+      // e.g. - Framework: React, Usage: 60
+      const item = {};
+      const parts = line.split(",");
+      parts.forEach(part => {
+        const [key, value] = part.split(":").map(s => s.trim());
+        if (key && value) item[key] = isNaN(value) ? value : parseFloat(value);
+      });
+      if (Object.keys(item).length > 0) data.push(item);
+    }
+  });
+
+  chart.data = data;
+  return chart;
+}
 
 
 // API to generate slides
