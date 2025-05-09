@@ -21,7 +21,7 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemi
 
 // Generate Prompt for Gemini
 function generatePrompt(topic, slidesCount) {
-return `
+  return `
 You are an expert presentation designer and educator. Generate a compelling, visually-structured presentation on the topic: "${topic}", consisting of ${slidesCount} slides. This presentation must be suitable for professional, academic, or general audiences, depending on the topic.
 
 Format Rules:
@@ -92,112 +92,91 @@ Use a pie chart icon to represent proportional adoption.
 Make the output ready for rendering in Reveal.js, Gamma, or other slide platforms.`;
 }
 
-
-
-
 // Parse Gemini response into structured slides
 function parseGeminiResponse(text) {
-const slides = [];
-const sections = text.split(/Slide \d+:/).filter(Boolean);
+  const slides = [];
+  const sections = text.split(/Slide \d+:/).filter(Boolean);
 
-sections.forEach((section, i) => {
-const lines = section.trim().split("\n");
-const title = lines[0]?.trim() || Slide ${i + 1};
-const bullets = [];
-const tables = [];
-const charts = [];
-const shapes = [];
-let currentTable = [];
-let currentChart = "";
-let inChart = false;
+  sections.forEach((section, i) => {
+    const lines = section.trim().split("\n");
+    const title = lines[0]?.trim() || `Slide ${i + 1}`;
+    const bullets = [];
+    const tables = [];
+    const charts = [];
+    const shapes = [];
+    let currentTable = [];
+    let currentChart = "";
+    let inChart = false;
 
-lines.slice(1).forEach(line => {  
-  const shapeMatch = line.match(/Use a (\w+) shape/);  
-  if (shapeMatch) {  
-    shapes.push(shapeMatch[1]);  
-    return;  
-  }  
+    lines.slice(1).forEach(line => {
+      const shapeMatch = line.match(/Use a (\w+) shape/);
+      if (shapeMatch) {
+        shapes.push(shapeMatch[1]);
+        return;
+      }
 
-  // Handle markdown table  
-  if (line.startsWith("|")) {  
-    currentTable.push(line);  
-  }   
-  // Start of chart block  
-  else if (line.startsWith("```chart")) {  
-    inChart = true;  
-    currentChart = "";  
-  }   
-  // End of chart block  
-  else if (line.startsWith("```") && inChart) {  
-    charts.push(parseChart(currentChart.trim()));  
-    inChart = false;  
-  }   
-  // Inside chart block  
-  else if (inChart) {  
-    currentChart += line + "\n";  
-  }   
-  // Bullet point  
-  else if (line.trim().startsWith("-")) {  
-    bullets.push(line.replace(/^-/, "").trim());  
-  }  
-});  
+      if (line.startsWith("|")) {
+        currentTable.push(line);
+      } else if (line.startsWith("```chart")) {
+        inChart = true;
+        currentChart = "";
+      } else if (line.startsWith("```") && inChart) {
+        charts.push(parseChart(currentChart.trim()));
+        inChart = false;
+      } else if (inChart) {
+        currentChart += line + "\n";
+      } else if (line.trim().startsWith("-")) {
+        bullets.push(line.replace(/^-/, "").trim());
+      }
+    });
 
-if (currentTable.length > 0) {  
-  tables.push(currentTable.join("\n"));  
-}  
+    if (currentTable.length > 0) {
+      tables.push(currentTable.join("\n"));
+    }
 
-slides.push({  
-  title,  
-  bullets,  
-  tables,  
-  charts,  
-  shapes  
-});
+    slides.push({
+      title,
+      bullets,
+      tables,
+      charts,
+      shapes
+    });
+  });
 
-});
-
-return slides;
+  return slides;
 }
 
 // Helper function to parse chart content into structured object
 function parseChart(chartText) {
-const chart = {};
-const lines = chartText.split("\n");
-const data = [];
+  const chart = {};
+  const lines = chartText.split("\n");
+  const data = [];
 
-lines.forEach(line => {
-if (line.startsWith("Type:")) {
-chart.type = line.replace("Type:", "").trim();
-} else if (line.startsWith("Title:")) {
-chart.title = line.replace("Title:", "").trim();
-} else if (line.startsWith("X-Axis:")) {
-chart.xAxis = line.replace("X-Axis:", "").trim();
-} else if (line.startsWith("Y-Axis:")) {
-chart.yAxis = line.replace("Y-Axis:", "").trim();
-} else if (line.startsWith("//")) {
-chart.note = line.replace("//", "").trim();
-} else if (line.includes(":")) {
-// e.g. - Framework: React, Usage: 60
-const item = {};
-const parts = line.split(",");
-parts.forEach(part => {
-const [key, value] = part.split(":").map(s => s.trim());
-if (key && value) item[key] = isNaN(value) ? value : parseFloat(value);
-});
-if (Object.keys(item).length > 0) data.push(item);
+  lines.forEach(line => {
+    if (line.startsWith("Type:")) {
+      chart.type = line.replace("Type:", "").trim();
+    } else if (line.startsWith("Title:")) {
+      chart.title = line.replace("Title:", "").trim();
+    } else if (line.startsWith("X-Axis:")) {
+      chart.xAxis = line.replace("X-Axis:", "").trim();
+    } else if (line.startsWith("Y-Axis:")) {
+      chart.yAxis = line.replace("Y-Axis:", "").trim();
+    } else if (line.startsWith("//")) {
+      chart.note = line.replace("//", "").trim();
+    } else if (line.includes(":")) {
+      const item = {};
+      const parts = line.split(",");
+      parts.forEach(part => {
+        const [key, value] = part.split(":").map(s => s.trim());
+        if (key && value) item[key] = isNaN(value) ? value : parseFloat(value);
+      });
+      if (Object.keys(item).length > 0) data.push(item);
+    }
+  });
+
+  chart.data = data;
+  return chart;
 }
-});
-
-chart.data = data;
-return chart;
-}
-
-
-
-
-
-
-
 
 
 // API to generate slides
