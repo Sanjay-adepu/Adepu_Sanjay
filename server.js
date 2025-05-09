@@ -146,18 +146,25 @@ function parseGeminiResponse(text) {
       }
     });
 
-    slides.push({
-      title,
-      bullets: bullets.length > 0 ? bullets : [],
-      table: tableLines.length > 0 ? tableLines.join("\n") : null,
-      columns: Object.keys(columns).length > 0 ? columns : null,
-      shape: shapes.length > 0 ? shapes[0] : null
-    });
+    // Only push slide if at least one content type is present
+    if (
+      bullets.length > 0 ||
+      tableLines.length > 0 ||
+      Object.keys(columns).length > 0 ||
+      shapes.length > 0
+    ) {
+      slides.push({
+        title,
+        bullets: bullets.length > 0 ? bullets : [],
+        table: tableLines.length > 0 ? tableLines.join("\n") : null,
+        columns: Object.keys(columns).length > 0 ? columns : null,
+        shape: shapes.length > 0 ? shapes[0] : null
+      });
+    }
   });
 
   return slides;
 }
-
 
 
 
