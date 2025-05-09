@@ -106,107 +106,91 @@ Use a **grid or list icon** to represent structured information.
 }
 
 // Parse Gemini response into structured slides
-function parseGeminiResponse(text) {
+function parsePresentationSlides(content) {
   const slides = [];
-  const sections = text.split(/Slide \d+:/).filter(Boolean);
+  const lines = content.split('\n');
 
-  sections.forEach((section, i) => {
-    const lines = section.trim().split("\n");
-    const title = lines[0]?.trim() || `Slide ${i + 1}`;
-    const bullets = [];
-    const tables = [];
-    const charts = [];
-    const shapes = [];
-    let currentTable = [];
-    let currentChart = "";
-    let inChart = false;
+  let currentSlide = null;
+  let inChart = false;
+  let inTable = false;
+  let chartLines = [];
+  let tableLines = [];
 
-    lines.slice(1).forEach(line => {
-      const shapeMatch = line.match(/Use a (\w+) shape/);
-      if (shapeMatch) {
-        shapes.push(shapeMatch[1]);
-        return;
+  for (let line of lines) {
+    const slideMatch = line.match(/^Slide\s+(\d+):\s*(.+)/);
+    const chartStart = line.trim().startsWith('```chart');
+    const tableStart = line.trim().startsWith('```table');
+    const blockEnd = line.trim() === '```';
+
+    if (slideMatch) {
+      if (currentSlide) {
+        slides.push(currentSlide);
       }
-
-      // Markdown table line
-      if (line.startsWith("|")) {
-        currentTable.push(line);
-      } 
-      // Start of chart block
-      else if (line.startsWith("```chart")) {
-        inChart = true;
-        currentChart = "";
-      } 
-      // End of chart block
-      else if (line.startsWith("```") && inChart) {
-        const parsed = parseChart(currentChart.trim());
-        if (parsed) charts.push(parsed);
-        inChart = false;
-      } 
-      // Inside chart block
-      else if (inChart) {
-        currentChart += line + "\n";
-      } 
-      // Bullet point
-      else if (line.trim().startsWith("-")) {
-        bullets.push(line.replace(/^-/, "").trim());
-      }
-    });
-
-    if (currentTable.length > 0) {
-      tables.push(currentTable.join("\n"));
+      currentSlide = {
+        number: parseInt(slideMatch[1]),
+        title: slideMatch[2].trim(),
+        type: 'text',
+        content: [],
+        visualCue: null,
+      };
+      inChart = false;
+      inTable = false;
+      chartLines = [];
+      tableLines = [];
+      continue;
     }
 
-    slides.push({
-      title,
-      bullets,
-      tables,
-      charts,
-      shapes
-    });
-  });
+    if (!currentSlide) continue;
+
+    if (chartStart) {
+      inChart = true;
+      currentSlide.type = 'chart';
+      chartLines = [];
+      continue;
+    }
+
+    if (tableStart) {
+      inTable = true;
+      currentSlide.type = 'table';
+      tableLines = [];
+      continue;
+    }
+
+    if (blockEnd) {
+      if (inChart) {
+        currentSlide.content = chartLines.map(l => l.trim());
+        inChart = false;
+      } else if (inTable) {
+        currentSlide.content = tableLines.map(l => l.trim());
+        inTable = false;
+      }
+      continue;
+    }
+
+    if (inChart) {
+      chartLines.push(line);
+      continue;
+    }
+
+    if (inTable) {
+      tableLines.push(line);
+      continue;
+    }
+
+    if (line.startsWith('-') || line.startsWith('*')) {
+      currentSlide.content.push(line.replace(/^[-*]\s*/, '').trim());
+    }
+
+    if (line.toLowerCase().includes('use a') && line.toLowerCase().includes('icon')) {
+      currentSlide.visualCue = line.trim();
+    }
+  }
+
+  if (currentSlide) {
+    slides.push(currentSlide);
+  }
 
   return slides;
-}
-
-function parseChart(chartText) {
-  const chart = {
-    type: "bar",
-    data: {
-      labels: [],
-      datasets: [{
-        label: "Dataset", // Default label
-        data: [],
-        backgroundColor: []
-      }]
-    }
-  };
-
-  const lines = chartText.split("\n");
-  const colors = [
-    "#8BC34A", "#7E57C2", "#4FC3F7", "#FFA726",
-    "#F06292", "#26A69A", "#FFD54F", "#EF5350"
-  ];
-
-  let colorIndex = 0;
-
-  lines.forEach(line => {
-    if (line.startsWith("Type:")) {
-      chart.type = line.replace("Type:", "").trim();
-    } else if (line.startsWith("Title:")) {
-      chart.data.datasets[0].label = line.replace("Title:", "").trim();
-    } else if (line.includes(":")) {
-      const [label, value] = line.split(":").map(s => s.trim().replace("%", ""));
-      if (label && value) {
-        chart.data.labels.push(label.replace(/^- /, ""));
-        chart.data.datasets[0].data.push(Number(value));
-        chart.data.datasets[0].backgroundColor.push(colors[colorIndex % colors.length]);
-        colorIndex++;
-      }
-    }
-  });
-
-  return chart;
 }
 
 
