@@ -18,7 +18,6 @@ if (!GOOGLE_GEMINI_API_KEY) {
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
-
 // Generate Prompt for Gemini
 function generatePrompt(topic, slidesCount) {
   return `
@@ -64,28 +63,23 @@ Example Slide Output:
 
 Slide 1: Key Concepts of Artificial Intelligence
 
-AI is the simulation of human intelligence in machines.
-
-Includes learning, reasoning, and self-correction.
-
-Found in industries like healthcare, finance, and education.
-
-Divided into Narrow AI and General AI.
+- AI is the simulation of human intelligence in machines.
+- Includes learning, reasoning, and self-correction.
+- Found in industries like healthcare, finance, and education.
+- Divided into Narrow AI and General AI.
 
 Use a lightbulb shape to represent innovation.
 
 Slide 2: AI Industry Adoption Rates
 
+\`\`\`chart
 Type: pie  
 Data:  
-  
 Healthcare: 40%  
-  
 Finance: 25%  
-  
 Education: 20%  
-  
 Other: 15%
+\`\`\`
 
 Use a pie chart icon to represent proportional adoption.
 
@@ -115,17 +109,26 @@ function parseGeminiResponse(text) {
         return;
       }
 
+      // Handle markdown table
       if (line.startsWith("|")) {
         currentTable.push(line);
-      } else if (line.startsWith("```chart")) {
+      }
+      // Start of chart block
+      else if (line.startsWith("```chart")) {
         inChart = true;
         currentChart = "";
-      } else if (line.startsWith("```") && inChart) {
+      }
+      // End of chart block
+      else if (line.startsWith("```") && inChart) {
         charts.push(parseChart(currentChart.trim()));
         inChart = false;
-      } else if (inChart) {
+      }
+      // Inside chart block
+      else if (inChart) {
         currentChart += line + "\n";
-      } else if (line.trim().startsWith("-")) {
+      }
+      // Bullet point
+      else if (line.trim().startsWith("-")) {
         bullets.push(line.replace(/^-/, "").trim());
       }
     });
@@ -168,15 +171,21 @@ function parseChart(chartText) {
       const parts = line.split(",");
       parts.forEach(part => {
         const [key, value] = part.split(":").map(s => s.trim());
-        if (key && value) item[key] = isNaN(value) ? value : parseFloat(value);
+        if (key && value) {
+          item[key] = isNaN(value) ? value : parseFloat(value);
+        }
       });
-      if (Object.keys(item).length > 0) data.push(item);
+      if (Object.keys(item).length > 0) {
+        data.push(item);
+      }
     }
   });
 
   chart.data = data;
   return chart;
 }
+
+
 
 
 // API to generate slides
