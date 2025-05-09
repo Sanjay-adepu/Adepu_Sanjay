@@ -73,7 +73,6 @@ Make the output ready for rendering in Reveal.js, Gamma, or other slide platform
 
 
 // Parse Gemini response into structured slides
-// Parse Gemini response into structured slides
 function parseGeminiResponse(text) {
   const slides = [];
   const sections = text.split(/Slide \d+:/).filter(Boolean);
@@ -96,7 +95,7 @@ function parseGeminiResponse(text) {
         return;
       }
 
-      // Handle markdown table
+      // Markdown table line
       if (line.startsWith("|")) {
         currentTable.push(line);
       } 
@@ -107,7 +106,8 @@ function parseGeminiResponse(text) {
       } 
       // End of chart block
       else if (line.startsWith("```") && inChart) {
-        charts.push(parseChart(currentChart.trim()));
+        const parsed = parseChart(currentChart.trim());
+        if (parsed) charts.push(parsed);
         inChart = false;
       } 
       // Inside chart block
@@ -136,36 +136,43 @@ function parseGeminiResponse(text) {
   return slides;
 }
 
-// Helper function to parse chart content into structured object
 function parseChart(chartText) {
-  const chart = {};
+  const chart = {
+    type: "bar",
+    data: {
+      labels: [],
+      datasets: [{
+        label: "Dataset", // Default label
+        data: [],
+        backgroundColor: []
+      }]
+    }
+  };
+
   const lines = chartText.split("\n");
-  const data = [];
+  const colors = [
+    "#8BC34A", "#7E57C2", "#4FC3F7", "#FFA726",
+    "#F06292", "#26A69A", "#FFD54F", "#EF5350"
+  ];
+
+  let colorIndex = 0;
 
   lines.forEach(line => {
     if (line.startsWith("Type:")) {
       chart.type = line.replace("Type:", "").trim();
     } else if (line.startsWith("Title:")) {
-      chart.title = line.replace("Title:", "").trim();
-    } else if (line.startsWith("X-Axis:")) {
-      chart.xAxis = line.replace("X-Axis:", "").trim();
-    } else if (line.startsWith("Y-Axis:")) {
-      chart.yAxis = line.replace("Y-Axis:", "").trim();
-    } else if (line.startsWith("//")) {
-      chart.note = line.replace("//", "").trim();
+      chart.data.datasets[0].label = line.replace("Title:", "").trim();
     } else if (line.includes(":")) {
-      // e.g. - Framework: React, Usage: 60
-      const item = {};
-      const parts = line.split(",");
-      parts.forEach(part => {
-        const [key, value] = part.split(":").map(s => s.trim());
-        if (key && value) item[key] = isNaN(value) ? value : parseFloat(value);
-      });
-      if (Object.keys(item).length > 0) data.push(item);
+      const [label, value] = line.split(":").map(s => s.trim().replace("%", ""));
+      if (label && value) {
+        chart.data.labels.push(label.replace(/^- /, ""));
+        chart.data.datasets[0].data.push(Number(value));
+        chart.data.datasets[0].backgroundColor.push(colors[colorIndex % colors.length]);
+        colorIndex++;
+      }
     }
   });
 
-  chart.data = data;
   return chart;
 }
 
