@@ -19,58 +19,91 @@ if (!GOOGLE_GEMINI_API_KEY) {
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
 // Generate Prompt for Gemini
-function generatePrompt(topic, slidesCount) {
-  return `  
-You are an expert presentation designer and educator. Generate a compelling, visually-structured presentation on the topic: **"${topic}"**, consisting of **${slidesCount} slides**. This presentation must be suitable for professional, academic, or general audiences, depending on the topic.  
+function generatePrompt(topic, slidesCount, presenterName = "Your Name") {
+  return `
+You are an expert educator and presentation designer. Create a clear, structured, engaging presentation on the topic: "${topic}" with exactly ${slidesCount} slides.
 
-### Format Rules:
-- **Every 2 slides**: One of them must include either a **table** or a **chart**.
-- If a slide contains a **table or chart**, it should **not include bullet points** — focus on the visual content only.
-- Alternate between visual (table/chart) and bullet-style slides for variety and clarity.
+**Target Audience:** Professionals, students, or the general public depending on topic complexity. Keep it informative yet visually appealing.
 
-### Slide Content Guidelines:
-- **Title**: Begin with "Slide X: [Title]" — short, relevant, and clear.  
-- **Bullet Points**: 4–5 well-structured bullets (only if the slide has no chart or table).  
-- **Tables (Markdown)**: Use for comparisons, classifications, or breakdowns.  
-- **Charts (Markdown)**: Choose the most appropriate type from the list below and represent the data using markdown code blocks.
+---
 
-### Allowed Chart Types (use one where relevant):
-- **Bar Chart**  
-- **Pie Chart**  
-- **Line Chart**  
+### FORMAT REQUIREMENTS
 
-### Additional:
-- **Shapes/Icons**: Suggest a visual element (e.g., triangle, decision tree, star, circle, etc.) to symbolize the slide’s concept.
-- Add short examples, analogies, or metaphors if it helps understanding.
-- Keep tone and complexity appropriate to the topic’s domain.
-- Avoid empty or filler content; every slide must meaningfully add to the topic.
+- **Slide Count:** ${slidesCount}
+- **Title Format:** Start each slide with "Slide X: [Title]" (replace X with slide number).
+- **Slide Type:** Alternate between **textual (bulleted)** slides and **visual** slides (tables/charts).
+- **Every 2 slides:** Ensure **at least one** visual slide (table or chart).
 
-### Example Slide Output:
+---
 
-**Slide 1: Key Concepts of Artificial Intelligence**  
-- AI is the simulation of human intelligence in machines.  
-- Includes learning, reasoning, and self-correction.  
-- Found in industries like healthcare, finance, and education.  
-- Divided into Narrow AI and General AI.  
-- Use a **lightbulb shape** to represent innovation.  
+### SLIDE STRUCTURE
 
-**Slide 2: AI Industry Adoption Rates**  
+**Slide 1 (Intro):**  
+Slide 1: ${topic}  
+- *Presented by:* ${presenterName}  
+- 2–3 line introduction to the topic.  
+- Suggest a **symbolic icon** for the topic (e.g., lightbulb, globe, circuit).  
 
+---
+
+**Text Slides (with bullets):**  
+- 4 to 6 informative bullet points.  
+- Each bullet must be clear, concise, and informative.  
+- Use **bolding**, inline \`code\`, or analogies to simplify complex ideas.  
+- Keep formatting consistent and non-repetitive.
+
+---
+
+**Visual Slides (tables/charts only):**  
+- No bullets on these slides.  
+- Choose one:
+  - **Bar Chart**
+  - **Pie Chart**
+  - **Line Chart**
+  - **Comparison Table**
+
+**Examples:**
+
+**Chart Example**  
 \`\`\`chart  
-Type: pie  
+Type: bar  
 Data:  
-  - Healthcare: 40%  
-  - Finance: 25%  
-  - Education: 20%  
-  - Other: 15%  
+2019: 50  
+2020: 80  
+2021: 120  
+2022: 100  
+2023: 150  
 \`\`\`  
+Use a **bar chart icon** to symbolize growth.
 
-- Use a **pie chart icon** to represent proportional adoption.  
+**Table Example**  
+\`\`\`table  
+| Technology     | Description                     | Example Use        |  
+|----------------|----------------------------------|--------------------|  
+| AI             | Simulates human intelligence     | Chatbots, Vision   |  
+| Blockchain     | Decentralized digital ledger     | Bitcoin, NFTs      |  
+| IoT            | Connects physical devices online | Smart homes, cars  |  
+\`\`\`  
+Use a **grid or list icon** to represent structured information.
 
-Make the output ready for rendering in Reveal.js, Gamma, or other slide platforms.`;
+---
+
+**Visual Cue (Optional):**  
+- Suggest a symbolic visual per slide (e.g., tree, gear, eye, rocket).  
+
+---
+
+### ADDITIONAL GUIDELINES
+
+- Use only relevant and **non-placeholder** content (do not return "--", "null", or empty charts).
+- Explain abstract ideas with relatable examples or metaphors.
+- Avoid filler content — each slide must meaningfully contribute to understanding the topic.
+- Keep tone consistent and appropriate to the audience.
+- Ensure compatibility with Reveal.js, Gamma, or similar slide tools.
+
+---
+`;
 }
-
-
 
 // Parse Gemini response into structured slides
 function parseGeminiResponse(text) {
