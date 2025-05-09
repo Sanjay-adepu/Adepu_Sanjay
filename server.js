@@ -38,9 +38,6 @@ You are an expert presentation designer and educator. Generate a compelling, vis
 - **Bar Chart**  
 - **Pie Chart**  
 - **Line Chart**  
-- **Doughnut Chart**  
-- **Stacked Bar Chart**  
-- **Area Chart**
 
 ### Additional:
 - **Shapes/Icons**: Suggest a visual element (e.g., triangle, decision tree, star, circle, etc.) to symbolize the slide’s concept.
