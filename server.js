@@ -23,46 +23,47 @@ function generatePrompt(topic, slidesCount) {
   return `
 You are an expert educator and presentation writer. Create a clear, engaging, and well-structured presentation on the topic: "${topic}", with exactly ${slidesCount} slides.
 
-### Slide Structure Guidelines:
-- Use **bullet points** for most slides.
-- Use a **multi-column layout with 3 columns** for slides: 2, 5, 8, etc.
-- Use a **markdown table** for slides: 3, 6, 9, etc.
+### Slide Structure Rules:
+- Slide 2, 5, 8: Use **multi-column layout with 3 columns**.
+- Every 3rd slide (3, 6, 9...): Use a **markdown table**.
+- All other slides: Use **bullet points**.
 
 ### Slide Format:
+
 Slide 1: [Slide Title]  
 - Bullet point 1  
 - Bullet point 2  
 - Bullet point 3  
 
 Slide 2: [Slide Title]  
-**Multi-Column Layout**
+**Multi-Column Layout**  
 
-**Column 1:**  
-- Item 1  
-- Item 2  
-
-**Column 2:**  
+**Column 1 Title:**  
 - Item A  
 - Item B  
 
-**Column 3:**  
+**Column 2 Title:**  
 - Item X  
 - Item Y  
 
+**Column 3 Title:**  
+- Item M  
+- Item N  
+
 Slide 3: [Slide Title]  
-\`\`\`table
-| Column A | Column B |
-|----------|----------|
-| Row 1A   | Row 1B   |
-| Row 2A   | Row 2B   |
+\`\`\`table  
+| Header 1 | Header 2 |  
+|----------|----------|  
+| Row 1    | Value 1  |  
+| Row 2    | Value 2  |  
 \`\`\`
 
-### Notes:
-- Avoid diagrams, shapes, or visual elements.
-- Every slide must be useful and informative.
+### Guidelines:
+- No diagrams, no visuals, no shapes.
+- Each slide should be informative and unique.
+- Avoid placeholder text like “TBD” or “Coming Soon”.
 `;
 }
-
 
 
 
@@ -75,13 +76,13 @@ function parseGeminiResponse(responseText) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // Detect new slide
+    // Start new slide
     const slideMatch = line.match(/^Slide\s+\d+:\s*(.+)$/i);
     if (slideMatch) {
       if (currentSlide) slides.push(currentSlide);
       currentSlide = {
         title: slideMatch[1],
-        type: 'bullet', // default type
+        type: 'bullet',
         content: [],
         columns: {},
         table: ''
@@ -89,42 +90,39 @@ function parseGeminiResponse(responseText) {
       continue;
     }
 
-    // Detect multi-column section
+    // Detect Multi-Column Layout
     if (line.toLowerCase().includes('**multi-column layout**')) {
       currentSlide.type = 'columns';
       continue;
     }
 
-    // Detect column title
-    const columnTitleMatch = line.match(/^\*\*(.+)\*\*:?$/);
+    // Detect Column Title
+    const columnTitleMatch = line.match(/^\*\*(.+?)\*\*:?$/);
     if (columnTitleMatch) {
       currentSlide.currentColumn = columnTitleMatch[1];
       currentSlide.columns[currentSlide.currentColumn] = [];
       continue;
     }
 
-    // Add to current column
+    // Add column items
     if (currentSlide?.type === 'columns' && line.startsWith('-')) {
       currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
       continue;
     }
 
-    // Detect table
+    // Detect Table
     if (line.startsWith('```table')) {
       currentSlide.type = 'table';
       currentSlide.table = '';
       continue;
     }
     if (currentSlide?.type === 'table') {
-      if (line === '```') {
-        continue;
-      } else {
-        currentSlide.table += line + '\n';
-        continue;
-      }
+      if (line === '```') continue;
+      currentSlide.table += line + '\n';
+      continue;
     }
 
-    // Add bullet point
+    // Add Bullet Items
     if (line.startsWith('-')) {
       currentSlide.content.push(line.slice(1).trim());
     }
