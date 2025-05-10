@@ -81,23 +81,22 @@ function parseGeminiResponse(responseText) {
       if (currentSlide) slides.push(currentSlide);
       currentSlide = {
         title: slideMatch[1],
-        type: 'bullet',
+        type: 'bullet', // default type
         content: [],
         columns: {},
-        currentColumn: '',
         table: ''
       };
       continue;
     }
 
-    // Multi-Column Layout Marker
+    // Detect multi-column section
     if (line.toLowerCase().includes('**multi-column layout**')) {
       currentSlide.type = 'columns';
       continue;
     }
 
-    // Column Headers
-    const columnTitleMatch = line.match(/^\*\*(Column\s*\d+)\*\*:?$/i);
+    // Detect column title
+    const columnTitleMatch = line.match(/^\*\*(.+)\*\*:?$/);
     if (columnTitleMatch) {
       currentSlide.currentColumn = columnTitleMatch[1];
       currentSlide.columns[currentSlide.currentColumn] = [];
@@ -105,26 +104,27 @@ function parseGeminiResponse(responseText) {
     }
 
     // Add to current column
-    if (currentSlide?.type === 'columns' && currentSlide.currentColumn && line.startsWith('-')) {
+    if (currentSlide?.type === 'columns' && line.startsWith('-')) {
       currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
       continue;
     }
 
-    // Detect table start
+    // Detect table
     if (line.startsWith('```table')) {
       currentSlide.type = 'table';
       currentSlide.table = '';
       continue;
     }
-
-    // Accumulate table lines
     if (currentSlide?.type === 'table') {
-      if (line === '```') continue;
-      currentSlide.table += line + '\n';
-      continue;
+      if (line === '```') {
+        continue;
+      } else {
+        currentSlide.table += line + '\n';
+        continue;
+      }
     }
 
-    // Default: Bullet points
+    // Add bullet point
     if (line.startsWith('-')) {
       currentSlide.content.push(line.slice(1).trim());
     }
@@ -133,6 +133,7 @@ function parseGeminiResponse(responseText) {
   if (currentSlide) slides.push(currentSlide);
   return slides;
 }
+
 
 
 
