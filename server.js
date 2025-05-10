@@ -21,160 +21,122 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemi
 // Generate Prompt for Gemini
 function generatePrompt(topic, slidesCount) {
   return `
-You are an expert presentation designer and educator. Create a compelling, visually-structured presentation on the topic: "${topic}", consisting of ${slidesCount} slides. The presentation should be suitable for professional, academic, or general audiences depending on the topic.
+You are an expert educator and presentation writer. Create a clear, engaging, and well-structured presentation on the topic: "${topic}", with exactly ${slidesCount} slides.
 
-## Slide Format Rules:
+### Slide Structure Guidelines:
+- Each slide must include:
+  - A **Title**
+  - Either **bullet points**, a **table**, or a **multi-column layout**
 
-- Do **NOT** use charts of any kind.
-- Use a combination of:
-  1. **Multi-column text box layouts** (for steps, feature breakdowns, comparisons, etc.).
-  2. **Structured shapes and lines** (e.g., flowcharts, pyramids, decision trees, timelines).
-- Do **NOT** combine both in the same slide — keep shape-based diagrams and multi-column text on separate slides.
-- **Every 3 slides**, include **1 table** (use Markdown).
-- Slides must meaningfully alternate between:
-  - Bullet points
-  - Tables (every 3 slides)
-  - Multi-column layouts
-  - Shape-based diagrams
+### Allowed Slide Types:
+1. **Bullet Points**: Use for explanations, definitions, or short lists.
+2. **Tables (Markdown)**: Use every 3rd slide to present structured comparisons or data.
+3. **Multi-Column Layouts**: Use for side-by-side content such as:
+   - Feature vs Benefit
+   - Step-by-step guides
+   - Comparisons (e.g., P-type vs N-type)
+   - Pros vs Cons
 
-## Slide Content Guidelines:
+### Output Format:
 
-- Title: Start with "Slide X: [Title]" — concise and clear.
-- Bullet Points: Use only if slide has no table, shape, or multi-column structure.
-- Multi-column Layouts: Show as side-by-side columns (e.g., Features vs Benefits).
-- Tables (Markdown): Use for comparisons, breakdowns, categories.
-- Shapes: Suggest appropriate shape/diagram (e.g., triangle for hierarchy, decision tree for logic, circle for cycles).
+Slide 1: [Slide Title]  
+- Bullet point 1  
+- Bullet point 2  
+- Bullet point 3  
 
-## Visuals:
-
-- Use diagrams only when appropriate and with clarity.
-- Example shapes: flowchart, timeline, Venn diagram, cycle, matrix, pyramid, etc.
-- Suggest where to place lines/arrows if applicable.
-
-## Tone and Examples:
-
-- Include examples, analogies, or metaphors for better clarity.
-- Keep explanations precise and relevant.
-- Avoid filler; every slide must add meaningful content.
-
-## Output Format:
-
-**Example Slide Output**
-
-Slide 1: Understanding Cloud Computing  
-- Cloud computing delivers computing services over the internet.  
-- Offers flexibility, scalability, and cost-efficiency.  
-- Common types include IaaS, PaaS, and SaaS.  
-- Used in storage, networking, databases, and analytics.  
-Use a cloud shape to represent the concept.
-
-Slide 2: Cloud Service Models Comparison  
-\`\`\`table
-| Model | Description | Example |
-|-------|-------------|---------|
-| IaaS  | Infrastructure as a Service | AWS EC2 |
-| PaaS  | Platform as a Service | Google App Engine |
-| SaaS  | Software as a Service | Gmail |
-\`\`\`
-
-Slide 3: Benefits vs Challenges of Cloud  
+Slide 2: [Slide Title]  
 **Multi-Column Layout**
 
-**Benefits:**  
-- Scalability  
-- Flexibility  
-- Cost-effective  
+**Left Column Title:**  
+- Item A  
+- Item B  
 
-**Challenges:**  
-- Security risks  
-- Downtime  
-- Compliance  
+**Right Column Title:**  
+- Item X  
+- Item Y  
+
+Slide 3: [Slide Title]  
+\`\`\`table
+| Column 1 | Column 2 |
+|----------|----------|
+| Data 1   | Data 2   |
+| Data 3   | Data 4   |
+\`\`\`
+
+### Notes:
+- Avoid diagrams, shapes, or visual instructions.
+- Make sure each slide adds new, useful information.
+- Don’t include “Content coming soon...”.
 `;
 }
 
-
-
 // Parse Gemini response into structured slides
-function parseGeminiResponse(text) {
+function parseGeminiResponse(responseText) {
   const slides = [];
-  const sections = text.split(/Slide \d+:/).filter(Boolean);
+  const lines = responseText.split('\n');
+  let currentSlide = null;
 
-  sections.forEach((section, i) => {
-    const lines = section.trim().split("\n");
-    const title = lines[0]?.trim() || `Slide ${i + 1}`;
-    const bullets = [];
-    const tableLines = [];
-    const columns = {};
-    let shape = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
 
-    let currentColumn = null;
-    let inColumnBlock = false;
-
-    lines.slice(1).forEach(line => {
-      line = line.trim();
-
-      // Detect Shape
-      const shapeMatch = line.match(/Use a (.+?) (shape|diagram)/i);
-      if (shapeMatch) {
-        shape = shapeMatch[1].trim();
-        return;
-      }
-
-      // Table content
-      if (line.startsWith("|")) {
-        tableLines.push(line);
-        return;
-      }
-
-      // Multi-column header
-      const colHeaderMatch = line.match(/^(\*\*.+?\*\*):$/);
-      if (colHeaderMatch) {
-        currentColumn = colHeaderMatch[1].replace(/\*\*/g, "").trim();
-        columns[currentColumn] = [];
-        inColumnBlock = true;
-        return;
-      }
-
-      // Multi-column content
-      if (inColumnBlock && line.startsWith("-")) {
-        columns[currentColumn].push(line.replace(/^-/, "").trim());
-        return;
-      }
-
-      // Bullet points
-      if (line.startsWith("-")) {
-        bullets.push(line.replace(/^-/, "").trim());
-        return;
-      }
-    });
-
-    // Finalize table string
-    const table = tableLines.length > 0 ? tableLines.join("\n") : null;
-
-    // Convert empty structures to null
-    const cleanColumns = Object.keys(columns).length > 0 ? columns : null;
-
-    // Ensure fallback content
-    const hasContent = bullets.length || table || cleanColumns || shape;
-    if (!hasContent) {
-      bullets.push("Content coming soon...");
+    // Detect new slide
+    const slideMatch = line.match(/^Slide\s+\d+:\s*(.+)$/i);
+    if (slideMatch) {
+      if (currentSlide) slides.push(currentSlide);
+      currentSlide = {
+        title: slideMatch[1],
+        type: 'bullet', // default type
+        content: [],
+        columns: {},
+        table: ''
+      };
+      continue;
     }
 
-    slides.push({
-      title,
-      bullets: bullets.length > 0 ? bullets : null,
-      table,
-      columns: cleanColumns,
-      shape,
-    });
-  });
+    // Detect multi-column section
+    if (line.toLowerCase().includes('**multi-column layout**')) {
+      currentSlide.type = 'columns';
+      continue;
+    }
 
-  return {
-    success: true,
-    slides
-  };
+    // Detect column title
+    const columnTitleMatch = line.match(/^\*\*(.+)\*\*:?$/);
+    if (columnTitleMatch) {
+      currentSlide.currentColumn = columnTitleMatch[1];
+      currentSlide.columns[currentSlide.currentColumn] = [];
+      continue;
+    }
+
+    // Add to current column
+    if (currentSlide?.type === 'columns' && line.startsWith('-')) {
+      currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
+      continue;
+    }
+
+    // Detect table
+    if (line.startsWith('```table')) {
+      currentSlide.type = 'table';
+      currentSlide.table = '';
+      continue;
+    }
+    if (currentSlide?.type === 'table') {
+      if (line === '```') {
+        continue;
+      } else {
+        currentSlide.table += line + '\n';
+        continue;
+      }
+    }
+
+    // Add bullet point
+    if (line.startsWith('-')) {
+      currentSlide.content.push(line.slice(1).trim());
+    }
+  }
+
+  if (currentSlide) slides.push(currentSlide);
+  return slides;
 }
-
 
 
 
