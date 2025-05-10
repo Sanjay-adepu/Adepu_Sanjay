@@ -19,155 +19,158 @@ if (!GOOGLE_GEMINI_API_KEY) {
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
 
-function generatePrompt(topic, slidesCount) {
-  return `
-You are an expert educator and presentation writer. Create a clear, engaging, and well-structured presentation on the topic: "${topic}", with exactly ${slidesCount} slides.
-
-### Slide Structure Guidelines:
-- Each slide must include:
-  - A **Title**
-  - Either **bullet points**, a **table**, or a **multi-column layout**
-
-### Allowed Slide Types:
-1. **Bullet Points**: Use for explanations, definitions, or short lists.
-2. **Tables (Markdown)**: Use every 3rd slide to present structured comparisons or data.
-3. **Multi-Column Layouts (3 Columns)**: Use for side-by-side content such as:
-   - Feature vs Benefit vs Use Case
-   - Step-by-step guide (Step, Action, Result)
-   - Comparisons (e.g., P-type vs N-type vs Application)
-
-### Output Format:
-
-Slide 1: [Slide Title]  
-- Bullet point 1  
-- Bullet point 2  
-- Bullet point 3  
-
-Slide 2: [Slide Title]  
-**Multi-Column Layout**
-
-**Column 1:**  
-- Item A1  
-- Item A2  
-
-**Column 2:**  
-- Item B1  
-- Item B2  
-
-**Column 3:**  
-- Item C1  
-- Item C2  
-
-Slide 3: [Slide Title]  
-\`\`\`table
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data 1   | Data 2   | Data 3   |
-| Data 4   | Data 5   | Data 6   |
-\`\`\`
-
-### Notes:
-- Do **not** include diagrams, shapes, or visual illustrations.
-- Ensure all slides are meaningful, structured, and relevant to the topic.
-- Do **not** include placeholder text like “coming soon”.
-  `;
-}
-
+// Parse AI response
 function parseGeminiResponse(responseText) {
-  const slides = [];
-  const lines = responseText.split('\n');
-  let currentSlide = null;
+    const slides = [];
+    const slideSections = responseText.split("Slide ");
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    slideSections.forEach((section) => {
+        const match = section.match(/^(\d+):\s*(.+)/);
+        if (match) {
+            const title = match[2].replace(/\*\*/g, "").trim();
+            const lines = section.split("\n").slice(1).map(line => line.trim());
 
-    // Detect new slide
-    const slideMatch = line.match(/^Slide\s+\d+:\s*(.+)$/i);
-    if (slideMatch) {
-      if (currentSlide) slides.push(currentSlide);
-      currentSlide = {
-        title: slideMatch[1],
-        type: 'bullet',
-        content: [],
-        columns: {},
-        table: '',
-        currentColumn: ''
-      };
-      continue;
-    }
+            const content = [];
+            const table = [];
+            let isCodeBlock = false;
+            let isTable = false;
 
-    // Detect multi-column
-    if (line.toLowerCase().includes('**multi-column layout**')) {
-      currentSlide.type = 'columns';
-      continue;
-    }
+            lines.forEach((line, index) => {
+                if (line.startsWith("```")) {
+                    isCodeBlock = !isCodeBlock;
+                } else if (isCodeBlock) {
+                    if (line) content.push(line);
+                } else if (line && line !== "**") {
+                    if (line.startsWith("|") && line.endsWith("|")) {
+                        isTable = true;
+                        table.push(line);
+                    } else if (isTable && line.includes("|")) {
+                        table.push(line);
+                    } else {
+                        isTable = false;
+                        // Remove leading "- " if exists
+                        content.push(line.replace(/^-\s*/, ""));
+                    }
+                }
+            });
 
-    // Column titles
-    const columnMatch = line.match(/^\*\*(.+)\*\*:?$/);
-    if (columnMatch) {
-      const columnName = columnMatch[1].trim();
-      currentSlide.currentColumn = columnName;
-      currentSlide.columns[columnName] = [];
-      continue;
-    }
+            slides.push({ title, content, table: table.length ? table : null });
+        }
+    });
 
-    if (currentSlide?.type === 'columns' && line.startsWith('-')) {
-      currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
-      continue;
-    }
-
-    // Detect table
-    if (line.startsWith('```table')) {
-      currentSlide.type = 'table';
-      currentSlide.table = '';
-      continue;
-    }
-
-    if (currentSlide?.type === 'table') {
-      if (line === '```') continue;
-      currentSlide.table += line + '\n';
-      continue;
-    }
-
-    // Default to bullet point
-    if (line.startsWith('-')) {
-      currentSlide.content.push(line.slice(1).trim());
-    }
-  }
-
-  if (currentSlide) slides.push(currentSlide);
-  return slides;
+    return slides.length ? { slides } : { error: "Invalid AI response format" };
 }
 
 
 
 
 
-// API to generate slides
-app.post("/generate-slides", async (req, res) => {
-  const { topic, slidesCount } = req.body;
+// Generate PPT using AI
+app.post("/generate-ppt", async (req, res) => {
+    const { topic, slidesCount } = req.body;
 
-  if (!topic || !slidesCount) {
-    return res.status(400).json({ error: "Topic and slidesCount are required." });
-  }
+    if (!topic || !slidesCount) {
+        return res.status(400).json({ error: "Missing required fields: topic and slidesCount" });
+    }
 
-  const prompt = generatePrompt(topic, slidesCount);
-
-  try {
-    const response = await axios.post(
-      `${GEMINI_API_URL}?key=${GOOGLE_GEMINI_API_KEY}`,
-      { contents: [{ parts: [{ text: prompt }] }] }
+    const isCodingTopic = ["Java", "Python", "JavaScript", "C++", "C#", "React", "Node.js","PHP"].some(lang =>
+        topic.toLowerCase().includes(lang.toLowerCase())
     );
 
-    const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const structuredSlides = parseGeminiResponse(rawText);
+    let prompt;
+    if (isCodingTopic) {
+        prompt = `
+Generate a PowerPoint presentation on "${topic}" with exactly ${slidesCount} slides.
 
-    res.json({ success: true, slides: structuredSlides });
-  } catch (error) {
-    console.error("Gemini API error:", error.message);
-    res.status(500).json({ error: "Failed to generate slides from Gemini." });
-  }
+Slide Structure:
+
+1. Slide Title: Format as "Slide X: Title".
+2. Explanation: Use clear, structured bullet points (max 3 per slide).
+3. Code Snippets: Include only one **small** example per slide, not exceeding 4 lines.
+
+Example:
+
+Slide 2: Hello World Example
+
+- Basic syntax of ${topic}.
+- How to print output.
+- Entry point of the program.
+
+\`\`\`${topic.toLowerCase()} program
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+\`\`\`
+`;
+    } else {
+        prompt = `
+Generate a structured PowerPoint presentation on "${topic}" with exactly ${slidesCount} slides.
+
+Slide Structure:
+
+1. Slide Title: Format as "Slide X: Title".
+2. Content: Provide **exactly 4 to 5 bullet points** explaining key concepts in simple terms. Every slide must have at least 4 points. Do not exceed 5 bullet points.
+3. Ensure that the number of points remains consistent across all slides, even if there are more than 14 slides.
+4. Additionally, if slides 3, 6, and 8 exist in the presentation, each must include a table with at least 3 rows and 2 columns. Use varied table styles such as comparison tables, pros/cons, or data summaries.
+
+Example:
+
+Slide 1: Introduction to ${topic}
+
+- Definition of ${topic}.
+- Importance and real-world applications.
+- How it impacts various industries.
+- Key reasons why ${topic} is relevant today.
+- Future scope and advancements.
+
+Slide 2: Key Features
+
+- Feature 1: Explanation.
+- Feature 2: Explanation.
+- Feature 3: Explanation.
+- Feature 4: Explanation.
+- Feature 5: Explanation.
+
+Slide 3: Comparison Table
+
+- Overview of different models.
+- Factors considered in comparison.
+- Below is a comparison table:
+
+| Model | Use Case        |
+|-------|-----------------|
+| X     | Scenario A      |
+| Y     | Scenario B      |
+| Z     | Scenario C      |
+`;
+    }
+
+    try {
+        const geminiResponse = await axios.post(
+            `${GEMINI_API_URL}?key=${GOOGLE_GEMINI_API_KEY}`,
+            { contents: [{ parts: [{ text: prompt }] }] }
+        );
+
+        const aiText = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const formattedSlides = parseGeminiResponse(aiText);
+
+        if (formattedSlides.error) {
+            return res.status(500).json({ error: "Unexpected AI response. Please try again." });
+        }
+
+        return res.json(formattedSlides);
+
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        return res.status(500).json({ error: "Failed to generate slides from AI." });
+    }
 });
+
+
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
