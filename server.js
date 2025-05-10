@@ -18,17 +18,25 @@ if (!GOOGLE_GEMINI_API_KEY) {
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
-// Generate Prompt for Gemini
+
 function generatePrompt(topic, slidesCount) {
   return `
 You are an expert educator and presentation writer. Create a clear, engaging, and well-structured presentation on the topic: "${topic}", with exactly ${slidesCount} slides.
 
-### Slide Structure Rules:
-- Slide 2, 5, 8: Use **multi-column layout with 3 columns**.
-- Every 3rd slide (3, 6, 9...): Use a **markdown table**.
-- All other slides: Use **bullet points**.
+### Slide Structure Guidelines:
+- Each slide must include:
+  - A **Title**
+  - Either **bullet points**, a **table**, or a **multi-column layout**
 
-### Slide Format:
+### Allowed Slide Types:
+1. **Bullet Points**: Use for explanations, definitions, or short lists.
+2. **Tables (Markdown)**: Use every 3rd slide to present structured comparisons or data.
+3. **Multi-Column Layouts (3 Columns)**: Use for side-by-side content such as:
+   - Feature vs Benefit vs Use Case
+   - Step-by-step guide (Step, Action, Result)
+   - Comparisons (e.g., P-type vs N-type vs Application)
+
+### Output Format:
 
 Slide 1: [Slide Title]  
 - Bullet point 1  
@@ -36,38 +44,35 @@ Slide 1: [Slide Title]
 - Bullet point 3  
 
 Slide 2: [Slide Title]  
-**Multi-Column Layout**  
+**Multi-Column Layout**
 
-**Column 1 Title:**  
-- Item A  
-- Item B  
+**Column 1:**  
+- Item A1  
+- Item A2  
 
-**Column 2 Title:**  
-- Item X  
-- Item Y  
+**Column 2:**  
+- Item B1  
+- Item B2  
 
-**Column 3 Title:**  
-- Item M  
-- Item N  
+**Column 3:**  
+- Item C1  
+- Item C2  
 
 Slide 3: [Slide Title]  
-\`\`\`table  
-| Header 1 | Header 2 |  
-|----------|----------|  
-| Row 1    | Value 1  |  
-| Row 2    | Value 2  |  
+\`\`\`table
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Data 1   | Data 2   | Data 3   |
+| Data 4   | Data 5   | Data 6   |
 \`\`\`
 
-### Guidelines:
-- No diagrams, no visuals, no shapes.
-- Each slide should be informative and unique.
-- Avoid placeholder text like “TBD” or “Coming Soon”.
-`;
+### Notes:
+- Do **not** include diagrams, shapes, or visual illustrations.
+- Ensure all slides are meaningful, structured, and relevant to the topic.
+- Do **not** include placeholder text like “coming soon”.
+  `;
 }
 
-
-
-// Parse Gemini response into structured slides
 function parseGeminiResponse(responseText) {
   const slides = [];
   const lines = responseText.split('\n');
@@ -76,7 +81,7 @@ function parseGeminiResponse(responseText) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // Start new slide
+    // Detect new slide
     const slideMatch = line.match(/^Slide\s+\d+:\s*(.+)$/i);
     if (slideMatch) {
       if (currentSlide) slides.push(currentSlide);
@@ -85,44 +90,46 @@ function parseGeminiResponse(responseText) {
         type: 'bullet',
         content: [],
         columns: {},
-        table: ''
+        table: '',
+        currentColumn: ''
       };
       continue;
     }
 
-    // Detect Multi-Column Layout
+    // Detect multi-column
     if (line.toLowerCase().includes('**multi-column layout**')) {
       currentSlide.type = 'columns';
       continue;
     }
 
-    // Detect Column Title
-    const columnTitleMatch = line.match(/^\*\*(.+?)\*\*:?$/);
-    if (columnTitleMatch) {
-      currentSlide.currentColumn = columnTitleMatch[1];
-      currentSlide.columns[currentSlide.currentColumn] = [];
+    // Column titles
+    const columnMatch = line.match(/^\*\*(.+)\*\*:?$/);
+    if (columnMatch) {
+      const columnName = columnMatch[1].trim();
+      currentSlide.currentColumn = columnName;
+      currentSlide.columns[columnName] = [];
       continue;
     }
 
-    // Add column items
     if (currentSlide?.type === 'columns' && line.startsWith('-')) {
       currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
       continue;
     }
 
-    // Detect Table
+    // Detect table
     if (line.startsWith('```table')) {
       currentSlide.type = 'table';
       currentSlide.table = '';
       continue;
     }
+
     if (currentSlide?.type === 'table') {
       if (line === '```') continue;
       currentSlide.table += line + '\n';
       continue;
     }
 
-    // Add Bullet Items
+    // Default to bullet point
     if (line.startsWith('-')) {
       currentSlide.content.push(line.slice(1).trim());
     }
