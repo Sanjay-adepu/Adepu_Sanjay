@@ -89,10 +89,8 @@ Slide 3: Benefits vs Challenges of Cloud
 - Security risks  
 - Downtime  
 - Compliance  
-
 `;
 }
-
 
 
 
@@ -107,22 +105,28 @@ function parseGeminiResponse(text) {
     const bullets = [];
     const tableLines = [];
     const columns = {};
-    const shapes = [];
+    let shape = null;
+
     let currentColumn = null;
     let inColumnBlock = false;
 
     lines.slice(1).forEach(line => {
+      line = line.trim();
+
+      // Detect Shape
       const shapeMatch = line.match(/Use a (.+?) (shape|diagram)/i);
       if (shapeMatch) {
-        shapes.push(shapeMatch[1].trim());
+        shape = shapeMatch[1].trim();
         return;
       }
 
+      // Table content
       if (line.startsWith("|")) {
         tableLines.push(line);
         return;
       }
 
+      // Multi-column header
       const colHeaderMatch = line.match(/^(\*\*.+?\*\*):$/);
       if (colHeaderMatch) {
         currentColumn = colHeaderMatch[1].replace(/\*\*/g, "").trim();
@@ -131,19 +135,27 @@ function parseGeminiResponse(text) {
         return;
       }
 
-      if (inColumnBlock && line.trim().startsWith("-")) {
+      // Multi-column content
+      if (inColumnBlock && line.startsWith("-")) {
         columns[currentColumn].push(line.replace(/^-/, "").trim());
         return;
       }
 
-      if (line.trim().startsWith("-")) {
+      // Bullet points
+      if (line.startsWith("-")) {
         bullets.push(line.replace(/^-/, "").trim());
         return;
       }
     });
 
-    // Fallback: Ensure one non-null content exists
-    const hasContent = bullets.length || tableLines.length || Object.keys(columns).length || shapes.length;
+    // Finalize table string
+    const table = tableLines.length > 0 ? tableLines.join("\n") : null;
+
+    // Convert empty structures to null
+    const cleanColumns = Object.keys(columns).length > 0 ? columns : null;
+
+    // Ensure fallback content
+    const hasContent = bullets.length || table || cleanColumns || shape;
     if (!hasContent) {
       bullets.push("Content coming soon...");
     }
@@ -151,16 +163,17 @@ function parseGeminiResponse(text) {
     slides.push({
       title,
       bullets: bullets.length > 0 ? bullets : null,
-      table: tableLines.length > 0 ? tableLines.join("\n") : null,
-      columns: Object.keys(columns).length > 0 ? columns : null,
-      shape: shapes.length > 0 ? shapes[0] : null
+      table,
+      columns: cleanColumns,
+      shape,
     });
   });
 
-  return slides;
+  return {
+    success: true,
+    slides
+  };
 }
-
-
 
 
 
