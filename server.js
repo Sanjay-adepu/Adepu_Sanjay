@@ -24,21 +24,11 @@ function generatePrompt(topic, slidesCount) {
 You are an expert educator and presentation writer. Create a clear, engaging, and well-structured presentation on the topic: "${topic}", with exactly ${slidesCount} slides.
 
 ### Slide Structure Guidelines:
-- Each slide must include:
-  - A **Title**
-  - Either **bullet points**, a **table**, or a **multi-column layout**
+- Use **bullet points** for most slides.
+- Use a **multi-column layout with 3 columns** for slides: 2, 5, 8, etc.
+- Use a **markdown table** for slides: 3, 6, 9, etc.
 
-### Allowed Slide Types:
-1. **Bullet Points**: Use for explanations, definitions, or short lists.
-2. **Tables (Markdown)**: Use every 3rd slide to present structured comparisons or data.
-3. **Multi-Column Layouts**: Use for side-by-side content such as:
-   - Feature vs Benefit
-   - Step-by-step guides
-   - Comparisons (e.g., P-type vs N-type)
-   - Pros vs Cons
-
-### Output Format:
-
+### Slide Format:
 Slide 1: [Slide Title]  
 - Bullet point 1  
 - Bullet point 2  
@@ -47,28 +37,34 @@ Slide 1: [Slide Title]
 Slide 2: [Slide Title]  
 **Multi-Column Layout**
 
-**Left Column Title:**  
+**Column 1:**  
+- Item 1  
+- Item 2  
+
+**Column 2:**  
 - Item A  
 - Item B  
 
-**Right Column Title:**  
+**Column 3:**  
 - Item X  
 - Item Y  
 
 Slide 3: [Slide Title]  
 \`\`\`table
-| Column 1 | Column 2 |
+| Column A | Column B |
 |----------|----------|
-| Data 1   | Data 2   |
-| Data 3   | Data 4   |
+| Row 1A   | Row 1B   |
+| Row 2A   | Row 2B   |
 \`\`\`
 
 ### Notes:
-- Avoid diagrams, shapes, or visual instructions.
-- Make sure each slide adds new, useful information.
-- Don’t include “Content coming soon...”.
+- Avoid diagrams, shapes, or visual elements.
+- Every slide must be useful and informative.
 `;
 }
+
+
+
 
 // Parse Gemini response into structured slides
 function parseGeminiResponse(responseText) {
@@ -85,22 +81,23 @@ function parseGeminiResponse(responseText) {
       if (currentSlide) slides.push(currentSlide);
       currentSlide = {
         title: slideMatch[1],
-        type: 'bullet', // default type
+        type: 'bullet',
         content: [],
         columns: {},
+        currentColumn: '',
         table: ''
       };
       continue;
     }
 
-    // Detect multi-column section
+    // Multi-Column Layout Marker
     if (line.toLowerCase().includes('**multi-column layout**')) {
       currentSlide.type = 'columns';
       continue;
     }
 
-    // Detect column title
-    const columnTitleMatch = line.match(/^\*\*(.+)\*\*:?$/);
+    // Column Headers
+    const columnTitleMatch = line.match(/^\*\*(Column\s*\d+)\*\*:?$/i);
     if (columnTitleMatch) {
       currentSlide.currentColumn = columnTitleMatch[1];
       currentSlide.columns[currentSlide.currentColumn] = [];
@@ -108,27 +105,26 @@ function parseGeminiResponse(responseText) {
     }
 
     // Add to current column
-    if (currentSlide?.type === 'columns' && line.startsWith('-')) {
+    if (currentSlide?.type === 'columns' && currentSlide.currentColumn && line.startsWith('-')) {
       currentSlide.columns[currentSlide.currentColumn].push(line.slice(1).trim());
       continue;
     }
 
-    // Detect table
+    // Detect table start
     if (line.startsWith('```table')) {
       currentSlide.type = 'table';
       currentSlide.table = '';
       continue;
     }
+
+    // Accumulate table lines
     if (currentSlide?.type === 'table') {
-      if (line === '```') {
-        continue;
-      } else {
-        currentSlide.table += line + '\n';
-        continue;
-      }
+      if (line === '```') continue;
+      currentSlide.table += line + '\n';
+      continue;
     }
 
-    // Add bullet point
+    // Default: Bullet points
     if (line.startsWith('-')) {
       currentSlide.content.push(line.slice(1).trim());
     }
@@ -137,6 +133,7 @@ function parseGeminiResponse(responseText) {
   if (currentSlide) slides.push(currentSlide);
   return slides;
 }
+
 
 
 
