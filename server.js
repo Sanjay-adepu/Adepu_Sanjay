@@ -5,7 +5,7 @@ require("dotenv").config();
 
 const app = express();
 app.use(cors({
-  origin: ["https://www.falconai.space", "http://localhost:5173", "https://adepu-sanjay.vercel.app"],
+  origin: ["https://sparcx-next.vercel.app", "http://localhost:5173", "https://adepu-sanjay.vercel.app"],
   methods: ["GET", "POST"]
 }));
 app.use(express.json());
